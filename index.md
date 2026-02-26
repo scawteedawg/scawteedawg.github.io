@@ -1,3 +1,7 @@
+---
+title: Home
+---
+
 # Hello World! 
 ## I'm Scotty Tilton
 
