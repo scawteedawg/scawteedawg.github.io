@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Jar — Habit Point Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0c09;
+    --surface: #1a1710;
+    --surface2: #221f18;
+    --border: #2e2a20;
+    --gold: #c8a84b;
+    --gold-light: #e2c97e;
+    --gold-dim: #7a6428;
+    --green: #4a8c5c;
+    --red: #8c4a4a;
+    --text: #e8dfc8;
+    --text-dim: #7a7060;
+    --text-mid: #a89880;
+    --penny: #b87333;
+    --nickel: #9b9b9b;
+    --dime: #c0c0c0;
+    --quarter: #d4af6a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    padding: 0 0 80px 0;
+  }
+
+  /* Noise texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  header {
+    position: relative;
+    padding: 48px 40px 32px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+  }
+
+  header::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+  }
+
+  .header-left h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.8rem;
+    font-weight: 400;
+    color: var(--gold-light);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+
+  .header-left p {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  .jar-total {
+    text-align: right;
+  }
+
+  .jar-total .points-big {
+    font-family: 'Playfair Display', serif;
+    font-size: 3.5rem;
+    font-weight: 700;
+    color: var(--gold);
+    line-height: 1;
+  }
+
+  .jar-total .points-label {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+  }
+
+  .jar-total .coin-equiv {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  main {
+    position: relative;
+    z-index: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 32px;
+  }
+
+  .left-col { display: flex; flex-direction: column; gap: 28px; }
+  .right-col { display: flex; flex-direction: column; gap: 24px; }
+
+  .section-title {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--gold-dim);
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 22px 24px;
+    position: relative;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 20px; right: 20px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+    opacity: 0.5;
+  }
+
+  /* Category header with icon */
+  .cat-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .cat-icon {
+    font-size: 1.1rem;
+  }
+
+  .cat-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.05rem;
+    font-style: italic;
+    color: var(--text);
+  }
+
+  .cat-pts {
+    margin-left: auto;
+    font-size: 0.75rem;
+    color: var(--gold);
+    background: rgba(200, 168, 75, 0.08);
+    border: 1px solid var(--gold-dim);
+    border-radius: 2px;
+    padding: 2px 8px;
+  }
+
+  /* Habit rows */
+  .habit-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 0;
+    border-bottom: 1px solid rgba(46,42,32,0.6);
+    transition: background 0.15s;
+  }
+
+  .habit-row:last-child { border-bottom: none; }
+
+  .habit-name {
+    flex: 1;
+    font-size: 0.82rem;
+    color: var(--text-mid);
+    line-height: 1.3;
+  }
+
+  .habit-pts-badge {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    min-width: 48px;
+    text-align: center;
+  }
+
+  .btn-pts {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--text-mid);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .btn-pts:hover {
+    border-color: var(--gold-dim);
+    color: var(--gold-light);
+    background: rgba(200,168,75,0.05);
+  }
+
+  .btn-pts.earn { border-color: var(--green); color: #6bbf82; }
+  .btn-pts.earn:hover { background: rgba(74,140,92,0.1); }
+
+  .btn-pts.lose { border-color: var(--red); color: #bf6b6b; }
+  .btn-pts.lose:hover { background: rgba(140,74,74,0.1); }
+
+  /* Log */
+  .log-entries {
+    max-height: 260px;
+    overflow-y: auto;
+    margin-top: 4px;
+  }
+
+  .log-entries::-webkit-scrollbar { width: 4px; }
+  .log-entries::-webkit-scrollbar-track { background: transparent; }
+  .log-entries::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .log-entry {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(46,42,32,0.4);
+    font-size: 0.75rem;
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .log-entry:last-child { border-bottom: none; }
+
+  .log-delta {
+    font-weight: 500;
+    min-width: 38px;
+    text-align: right;
+  }
+
+  .log-delta.pos { color: #6bbf82; }
+  .log-delta.neg { color: #bf6b6b; }
+
+  .log-desc { flex: 1; color: var(--text-mid); }
+  .log-time { color: var(--text-dim); font-size: 0.65rem; }
+
+  .empty-log {
+    color: var(--text-dim);
+    font-size: 0.75rem;
+    padding: 16px 0;
+    text-align: center;
+  }
+
+  /* Prizes */
+  .prize-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(46,42,32,0.5);
+  }
+
+  .prize-row:last-child { border-bottom: none; }
+
+  .prize-threshold {
+    font-size: 0.7rem;
+    color: var(--gold-dim);
+    min-width: 52px;
+  }
+
+  .prize-name {
+    flex: 1;
+    font-size: 0.8rem;
+    color: var(--text-mid);
+  }
+
+  .prize-progress {
+    width: 70px;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .prize-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--gold-dim), var(--gold));
+    border-radius: 2px;
+    transition: width 0.5s ease;
+  }
+
+  .prize-row.unlocked .prize-name { color: var(--gold-light); }
+  .prize-row.unlocked .prize-threshold { color: var(--gold); }
+
+  /* Coin jar visual */
+  .coin-display {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+  }
+
+  .coin-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    flex: 1;
+    min-width: 64px;
+  }
+
+  .coin-circle {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+  }
+
+  .coin-count {
+    font-size: 0.9rem;
+    color: var(--text);
+  }
+
+  .coin-label {
+    font-size: 0.58rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .penny-circle { background: rgba(184,115,51,0.2); border: 1px solid var(--penny); color: var(--penny); }
+  .nickel-circle { background: rgba(155,155,155,0.1); border: 1px solid var(--nickel); color: var(--nickel); }
+  .dime-circle { background: rgba(192,192,192,0.1); border: 1px solid var(--dime); color: var(--dime); }
+  .quarter-circle { background: rgba(212,175,106,0.15); border: 1px solid var(--quarter); color: var(--quarter); }
+
+  /* Reset / undo bar */
+  .action-bar {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .btn-action {
+    flex: 1;
+    padding: 8px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--text-dim);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.15s;
+  }
+
+  .btn-action:hover {
+    border-color: var(--gold-dim);
+    color: var(--text-mid);
+  }
+
+  .btn-action.danger:hover {
+    border-color: var(--red);
+    color: #bf6b6b;
+  }
+
+  /* Responsive */
+  @media (max-width: 780px) {
+    main { grid-template-columns: 1fr; }
+    header { flex-direction: column; align-items: flex-start; }
+    .jar-total { text-align: left; }
+  }
+
+  .flash {
+    animation: flash 0.4s ease;
+  }
+
+  @keyframes flash {
+    0% { opacity: 1; }
+    30% { opacity: 0.3; }
+    100% { opacity: 1; }
+  }
+
+  .streak-note {
+    font-size: 0.68rem;
+    color: var(--text-dim);
+    margin-top: 10px;
+    font-style: italic;
+  }
+
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+    margin: 4px 0 12px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>The Jar</h1>
+    <p>Habit point tracker — pennies make the man</p>
+    <p id="sync-status" style="margin-top:5px;font-size:0.65rem;letter-spacing:0.1em;color:var(--text-dim);">Connecting…</p>
+  </div>
+  <div class="jar-total">
+    <div class="points-big" id="total-pts">0</div>
+    <div class="points-label">total points</div>
+    <div class="coin-equiv" id="coin-equiv">≈ 0 pennies in the jar</div>
+  </div>
+</header>
+
+<main>
+  <div class="left-col">
+
+    <!-- MATH -->
+    <div class="card">
+      <div class="section-title">Category</div>
+      <div class="cat-header">
+        <span class="cat-icon">∑</span>
+        <span class="cat-name">Math & Problem-Solving</span>
+        <span class="cat-pts" id="math-pts">0 pts</span>
+      </div>
+      <div id="math-habits">
+        <div class="habit-row">
+          <span class="habit-name">Solve an easy problem</span>
+          <span class="habit-pts-badge">+1 pt</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'math', 1, 'Easy math problem')">+ Log</button>
+        </div>
+        <div class="habit-row">
+          <span class="habit-name">Proof from a familiar class</span>
+          <span class="habit-pts-badge">+2 pts</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'math', 2, 'Proof — familiar class')">+ Log</button>
+        </div>
+        <div class="habit-row">
+          <span class="habit-name">Learn theorem + proof from unfamiliar class</span>
+          <span class="habit-pts-badge">+5 pts</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'math', 5, 'Theorem + proof — unfamiliar class')">+ Log</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CODING -->
+    <div class="card">
+      <div class="section-title">Category</div>
+      <div class="cat-header">
+        <span class="cat-icon">&lt;/&gt;</span>
+        <span class="cat-name">Coding Skills</span>
+        <span class="cat-pts" id="coding-pts">0 pts</span>
+      </div>
+      <div>
+        <div class="habit-row">
+          <span class="habit-name">1 Pomodoro of coding practice (25 min)</span>
+          <span class="habit-pts-badge">+1 pt</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'coding', 1, 'Coding Pomodoro (25 min)')">+ Log</button>
+        </div>
+        <div class="habit-row">
+          <span class="habit-name">4 Pomodoros in one day</span>
+          <span class="habit-pts-badge">+3 pts</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'coding', 3, '4-Pomodoro coding day bonus')">+ Log</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- WRITING -->
+    <div class="card">
+      <div class="section-title">Category</div>
+      <div class="cat-header">
+        <span class="cat-icon">✒</span>
+        <span class="cat-name">Writing</span>
+        <span class="cat-pts" id="writing-pts">0 pts</span>
+      </div>
+      <div>
+        <div class="habit-row">
+          <span class="habit-name">Journal entry — per page written</span>
+          <span class="habit-pts-badge">+1 pt</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'writing', 1, 'Journal — 1 page')">+ Log</button>
+        </div>
+        <div class="habit-row">
+          <span class="habit-name">Finish a book chapter</span>
+          <span class="habit-pts-badge">+2 pts</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'writing', 2, 'Finished a book chapter')">+ Log</button>
+        </div>
+        <div class="habit-row">
+          <span class="habit-name">Read 20–30 pages</span>
+          <span class="habit-pts-badge">+1 pt</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'writing', 1, 'Read 20-30 pages')">+ Log</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXERCISE -->
+    <div class="card">
+      <div class="section-title">Category</div>
+      <div class="cat-header">
+        <span class="cat-icon">◈</span>
+        <span class="cat-name">Exercise</span>
+        <span class="cat-pts" id="exercise-pts">0 pts</span>
+      </div>
+      <div>
+        <div class="habit-row">
+          <span class="habit-name">Walk (20+ min)</span>
+          <span class="habit-pts-badge">+1 pt</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'exercise', 1, 'Walk (20+ min)')">+ Log</button>
+        </div>
+        <div class="habit-row">
+          <span class="habit-name">Workout (gym, run, etc.)</span>
+          <span class="habit-pts-badge">+2 pts</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'exercise', 2, 'Full workout')">+ Log</button>
+        </div>
+        <div class="habit-row">
+          <span class="habit-name">Long hike or competition/race</span>
+          <span class="habit-pts-badge">+5 pts</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'exercise', 5, 'Long hike / race')">+ Log</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHORES -->
+    <div class="card">
+      <div class="section-title">Category</div>
+      <div class="cat-header">
+        <span class="cat-icon">⌂</span>
+        <span class="cat-name">Chores</span>
+        <span class="cat-pts" id="chores-pts">0 pts</span>
+      </div>
+      <div>
+        <div class="divider"></div>
+        <div style="font-size:0.62rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Quick tasks — +1 pt each</div>
+        <div class="habit-row">
+          <span class="habit-name">Clean the sink</span>
+          <span class="habit-pts-badge">+1 pt</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'chores', 1, 'Clean the sink')">+ Log</button>
+        </div>
+        <div class="habit-row">
+          <span class="habit-name">Clean the counters</span>
+          <span class="habit-pts-badge">+1 pt</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'chores', 1, 'Clean the counters')">+ Log</button>
+        </div>
+        <div class="habit-row">
+          <span class="habit-name">Wipe down mirrors</span>
+          <span class="habit-pts-badge">+1 pt</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'chores', 1, 'Wipe mirrors')">+ Log</button>
+        </div>
+        <div class="habit-row">
+          <span class="habit-name">Wipe down appliances</span>
+          <span class="habit-pts-badge">+1 pt</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'chores', 1, 'Wipe appliances')">+ Log</button>
+        </div>
+        <div class="habit-row">
+          <span class="habit-name">Take out the trash</span>
+          <span class="habit-pts-badge">+1 pt</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'chores', 1, 'Took out trash')">+ Log</button>
+        </div>
+        <div class="habit-row">
+          <span class="habit-name">Wash the dishes</span>
+          <span class="habit-pts-badge">+1 pt</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'chores', 1, 'Washed dishes')">+ Log</button>
+        </div>
+        <div class="habit-row">
+          <span class="habit-name">Declutter a drawer or shelf</span>
+          <span class="habit-pts-badge">+1 pt</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'chores', 1, 'Decluttered a space')">+ Log</button>
+        </div>
+        <div class="habit-row">
+          <span class="habit-name">Clean the desk</span>
+          <span class="habit-pts-badge">+1 pt</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'chores', 1, 'Cleaned desk')">+ Log</button>
+        </div>
+        <div class="divider" style="margin-top:12px;"></div>
+        <div style="font-size:0.62rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Medium tasks — +2 pts each</div>
+        <div class="habit-row">
+          <span class="habit-name">Vacuum</span>
+          <span class="habit-pts-badge">+2 pts</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'chores', 2, 'Vacuumed')">+ Log</button>
+        </div>
+        <div class="habit-row">
+          <span class="habit-name">Mop / sweep floors</span>
+          <span class="habit-pts-badge">+2 pts</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'chores', 2, 'Mopped/swept floors')">+ Log</button>
+        </div>
+        <div class="habit-row">
+          <span class="habit-name">Dust</span>
+          <span class="habit-pts-badge">+2 pts</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'chores', 2, 'Dusted')">+ Log</button>
+        </div>
+        <div class="habit-row">
+          <span class="habit-name">Do laundry</span>
+          <span class="habit-pts-badge">+2 pts</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'chores', 2, 'Did laundry')">+ Log</button>
+        </div>
+        <div class="habit-row">
+          <span class="habit-name">Clean the toilet</span>
+          <span class="habit-pts-badge">+2 pts</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'chores', 2, 'Cleaned toilet')">+ Log</button>
+        </div>
+        <div class="habit-row">
+          <span class="habit-name">Organize the fridge</span>
+          <span class="habit-pts-badge">+2 pts</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'chores', 2, 'Organized fridge')">+ Log</button>
+        </div>
+        <div class="divider" style="margin-top:12px;"></div>
+        <div style="font-size:0.62rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Big tasks — +5 pts each</div>
+        <div class="habit-row">
+          <span class="habit-name">Full bathroom clean</span>
+          <span class="habit-pts-badge">+5 pts</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'chores', 5, 'Full bathroom clean')">+ Log</button>
+        </div>
+        <div class="habit-row">
+          <span class="habit-name">Full room clean / overhaul</span>
+          <span class="habit-pts-badge">+5 pts</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'chores', 5, 'Full room clean')">+ Log</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PENALTIES -->
+    <div class="card">
+      <div class="section-title">Deductions</div>
+      <div class="cat-header">
+        <span class="cat-icon">−</span>
+        <span class="cat-name">Phone / Bad Habits</span>
+        <span class="cat-pts" id="penalty-pts" style="border-color:var(--red);color:#bf6b6b;">0 pts</span>
+      </div>
+      <div>
+        <div class="habit-row">
+          <span class="habit-name">30+ min of Instagram/YouTube/Podcasts beyond daily limit</span>
+          <span class="habit-pts-badge" style="color:var(--red);">−1 pt</span>
+          <button class="btn-pts lose" onclick="openModal('lose', 'penalty', 1, 'Excess phone use (30 min)')">− Log</button>
+        </div>
+        <div class="habit-row">
+          <span class="habit-name">Phone use before completing a morning habit</span>
+          <span class="habit-pts-badge" style="color:var(--red);">−2 pts</span>
+          <button class="btn-pts lose" onclick="openModal('lose', 'penalty', 2, 'Phone before morning habit')">− Log</button>
+        </div>
+        <div class="habit-row">
+          <span class="habit-name">Going to bed scrolling</span>
+          <span class="habit-pts-badge" style="color:var(--red);">−1 pt</span>
+          <button class="btn-pts lose" onclick="openModal('lose', 'penalty', 1, 'Bedtime scrolling')">− Log</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div class="right-col">
+
+    <!-- COIN JAR -->
+    <div class="card">
+      <div class="section-title">The Jar</div>
+      <p style="font-size:0.72rem;color:var(--text-dim);margin-bottom:12px;">1 point = 1 penny · convert as jar fills</p>
+      <div class="coin-display">
+        <div class="coin-chip">
+          <div class="coin-circle penny-circle">1¢</div>
+          <div class="coin-count" id="pennies">0</div>
+          <div class="coin-label">Pennies</div>
+        </div>
+        <div class="coin-chip">
+          <div class="coin-circle nickel-circle">5¢</div>
+          <div class="coin-count" id="nickels">0</div>
+          <div class="coin-label">Nickels</div>
+        </div>
+        <div class="coin-chip">
+          <div class="coin-circle dime-circle">10¢</div>
+          <div class="coin-count" id="dimes">0</div>
+          <div class="coin-label">Dimes</div>
+        </div>
+        <div class="coin-chip">
+          <div class="coin-circle quarter-circle">25¢</div>
+          <div class="coin-count" id="quarters">0</div>
+          <div class="coin-label">Quarters</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- PRIZES -->
+    <div class="card">
+      <div class="section-title">Prizes</div>
+      <div id="prize-list">
+        <div class="prize-row" data-threshold="25" onclick="redeemPrize(25, 'Small treat — boba, coffee, snack')" style="cursor:pointer;" title="Click to redeem">
+          <div class="prize-threshold">25 pts</div>
+          <div class="prize-name">Small treat — boba, coffee, snack</div>
+          <div class="prize-progress"><div class="prize-progress-fill" style="width:0%"></div></div>
+        </div>
+        <div class="prize-row" data-threshold="50" onclick="redeemPrize(50, 'In-N-Out or burrito spot')" style="cursor:pointer;" title="Click to redeem">
+          <div class="prize-threshold">50 pts</div>
+          <div class="prize-name">In-N-Out or burrito spot</div>
+          <div class="prize-progress"><div class="prize-progress-fill" style="width:0%"></div></div>
+        </div>
+        <div class="prize-row" data-threshold="100" onclick="redeemPrize(100, 'Cross Street or nice sit-down')" style="cursor:pointer;" title="Click to redeem">
+          <div class="prize-threshold">100 pts</div>
+          <div class="prize-name">Cross Street or nice sit-down</div>
+          <div class="prize-progress"><div class="prize-progress-fill" style="width:0%"></div></div>
+        </div>
+        <div class="prize-row" data-threshold="200" onclick="redeemPrize(200, 'Jeon at Jolie or Campfire')" style="cursor:pointer;" title="Click to redeem">
+          <div class="prize-threshold">200 pts</div>
+          <div class="prize-name">Jeon at Jolie or Campfire</div>
+          <div class="prize-progress"><div class="prize-progress-fill" style="width:0%"></div></div>
+        </div>
+        <div class="prize-row" data-threshold="300" onclick="redeemPrize(300, 'New video game')" style="cursor:pointer;" title="Click to redeem">
+          <div class="prize-threshold">300 pts</div>
+          <div class="prize-name">New video game</div>
+          <div class="prize-progress"><div class="prize-progress-fill" style="width:0%"></div></div>
+        </div>
+        <div class="prize-row" data-threshold="500" onclick="redeemPrize(500, 'Addison — go crazy')" style="cursor:pointer;" title="Click to redeem">
+          <div class="prize-threshold">500 pts</div>
+          <div class="prize-name">Addison — go crazy</div>
+          <div class="prize-progress"><div class="prize-progress-fill" style="width:0%"></div></div>
+        </div>
+        <div class="prize-row" data-threshold="800" onclick="redeemPrize(800, 'New PlayStation or Xbox')" style="cursor:pointer;" title="Click to redeem">
+          <div class="prize-threshold">800 pts</div>
+          <div class="prize-name">New PlayStation or Xbox</div>
+          <div class="prize-progress"><div class="prize-progress-fill" style="width:0%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOG -->
+    <div class="card">
+      <div class="section-title">Activity Log</div>
+      <div class="log-entries" id="log-entries">
+        <div class="empty-log">No activity yet. Start logging.</div>
+      </div>
+      <div class="action-bar">
+        <button class="btn-action" onclick="undoLast()">↩ Undo last</button>
+        <button class="btn-action danger" onclick="confirmReset()">⊗ Reset all</button>
+      </div>
+    </div>
+
+    <!-- CATEGORY TOTALS -->
+    <div class="card">
+      <div class="section-title">Points by Category</div>
+      <div id="cat-summary">
+        <div class="habit-row"><span class="habit-name">Math</span><span class="cat-pts" id="math-pts-2" style="margin-left:auto;">0</span></div>
+        <div class="habit-row"><span class="habit-name">Coding</span><span class="cat-pts" id="coding-pts-2" style="margin-left:auto;">0</span></div>
+        <div class="habit-row"><span class="habit-name">Writing & Reading</span><span class="cat-pts" id="writing-pts-2" style="margin-left:auto;">0</span></div>
+        <div class="habit-row"><span class="habit-name">Exercise</span><span class="cat-pts" id="exercise-pts-2" style="margin-left:auto;">0</span></div>
+        <div class="habit-row"><span class="habit-name">Chores</span><span class="cat-pts" id="chores-pts-2" style="margin-left:auto;">0</span></div>
+        <div class="habit-row"><span class="habit-name" style="color:#bf6b6b;">Deductions</span><span id="penalty-pts-2" style="margin-left:auto;font-size:0.75rem;color:#bf6b6b;">0</span></div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<!-- Comment Modal -->
+<div id="comment-modal" style="display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:28px 28px 22px;width:min(420px,92vw);position:relative;">
+    <div style="font-family:'Playfair Display',serif;font-size:1.1rem;font-style:italic;color:var(--gold-light);margin-bottom:4px;" id="modal-title">Log entry</div>
+    <div style="font-size:0.68rem;color:var(--text-dim);margin-bottom:16px;" id="modal-subtitle"></div>
+    <textarea id="modal-comment" placeholder="Add a note… (optional)" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--text);font-family:'DM Mono',monospace;font-size:0.8rem;padding:10px 12px;resize:vertical;min-height:80px;outline:none;line-height:1.5;" onfocus="this.style.borderColor='var(--gold-dim)'" onblur="this.style.borderColor='var(--border)'"></textarea>
+    <div style="display:flex;gap:10px;margin-top:14px;">
+      <button onclick="submitModal()" style="flex:1;padding:9px;background:rgba(200,168,75,0.08);border:1px solid var(--gold-dim);border-radius:2px;color:var(--gold-light);font-family:'DM Mono',monospace;font-size:0.75rem;cursor:pointer;letter-spacing:0.05em;">Log it</button>
+      <button onclick="closeModal()" style="padding:9px 16px;background:none;border:1px solid var(--border);border-radius:2px;color:var(--text-dim);font-family:'DM Mono',monospace;font-size:0.75rem;cursor:pointer;">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://xbayzexaqgnvkbmfedur.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhiYXl6ZXhhcWdudmtibWZlZHVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTU2NTAsImV4cCI6MjA4ODgzMTY1MH0.BtC4uroUXE_SLaeM5eA1rxgmZoxcyhUnByd6zm6jjDU';
+  const ROW_ID = 'scotty';
+
+  let state = {
+    total: 0,
+    cats: { math: 0, coding: 0, writing: 0, exercise: 0, chores: 0, penalty: 0 },
+    log: []
+  };
+
+  let saveTimeout = null;
+
+  function setStatus(msg, color) {
+    const el = document.getElementById('sync-status');
+    if (!el) return;
+    el.textContent = msg;
+    el.style.color = color || 'var(--text-dim)';
+  }
+
+  async function loadFromSupabase() {
+    setStatus('Loading…');
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/jar?id=eq.${ROW_ID}&select=data`, {
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`
+        }
+      });
+      const rows = await res.json();
+      if (rows && rows.length > 0) {
+        state = rows[0].data;
+        // Ensure penalty cat exists for older saved states
+        if (!state.cats.penalty) state.cats.penalty = 0;
+      }
+      setStatus('Synced ✓', 'var(--green)');
+    } catch (e) {
+      setStatus('Offline — changes saved locally', 'var(--gold-dim)');
+      const local = localStorage.getItem('thejar_backup');
+      if (local) state = JSON.parse(local);
+    }
+    render();
+  }
+
+  async function saveToSupabase() {
+    localStorage.setItem('thejar_backup', JSON.stringify(state));
+    setStatus('Saving…', 'var(--gold-dim)');
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/jar?id=eq.${ROW_ID}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({ data: state, updated_at: new Date().toISOString() })
+      });
+      setStatus('Synced ✓', 'var(--green)');
+    } catch (e) {
+      setStatus('Saved locally (offline)', 'var(--gold-dim)');
+    }
+  }
+
+  function debounceSave() {
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(saveToSupabase, 600);
+  }
+
+  // Modal state
+  let pendingAction = null;
+
+  function openModal(type, cat, pts, desc) {
+    pendingAction = { type, cat, pts, desc };
+    document.getElementById('modal-title').textContent = desc;
+    document.getElementById('modal-subtitle').textContent = `${type === 'earn' ? '+' : '-'}${pts} pt${pts !== 1 ? 's' : ''} · Add a note or just hit Log it`;
+    document.getElementById('modal-comment').value = '';
+    const modal = document.getElementById('comment-modal');
+    modal.style.display = 'flex';
+    setTimeout(() => document.getElementById('modal-comment').focus(), 50);
+  }
+
+  function closeModal() {
+    document.getElementById('comment-modal').style.display = 'none';
+    pendingAction = null;
+  }
+
+  function submitModal() {
+    if (!pendingAction) return;
+    const comment = document.getElementById('modal-comment').value.trim();
+    const { type, cat, pts, desc } = pendingAction;
+    closeModal();
+    if (type === 'earn') earn(cat, pts, desc, comment);
+    else lose(cat, pts, desc, comment);
+  }
+
+  // Close on backdrop click
+  document.getElementById('comment-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+
+  // Submit on Cmd/Ctrl+Enter
+  document.getElementById('modal-comment').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submitModal();
+  });
+
+  function earn(cat, pts, desc, comment) {
+    state.total += pts;
+    state.cats[cat] = (state.cats[cat] || 0) + pts;
+    state.log.unshift({ delta: pts, cat, desc, comment: comment || '', time: now() });
+    debounceSave();
+    render();
+  }
+
+  function lose(cat, pts, desc, comment) {
+    state.total = Math.max(0, state.total - pts);
+    state.cats[cat] = (state.cats[cat] || 0) + pts;
+    state.log.unshift({ delta: -pts, cat, desc, comment: comment || '', time: now() });
+    debounceSave();
+    render();
+  }
+
+  function undoLast() {
+    if (!state.log.length) return;
+    const last = state.log.shift();
+    state.total = Math.max(0, state.total - last.delta);
+    if (last.cat) {
+      const absDelta = Math.abs(last.delta);
+      state.cats[last.cat] = Math.max(0, (state.cats[last.cat] || 0) - absDelta);
+    }
+    debounceSave();
+    render();
+  }
+
+  function redeemPrize(threshold, name) {
+    if (state.total < threshold) {
+      alert(`You need ${threshold - state.total} more point${threshold - state.total !== 1 ? 's' : ''} to redeem this prize.`);
+      return;
+    }
+    if (!confirm(`Redeem "${name}" for ${threshold} points?`)) return;
+    state.total -= threshold;
+    state.log.unshift({ delta: -threshold, cat: null, desc: `🎉 Prize redeemed: ${name}`, comment: '', time: now() });
+    debounceSave();
+    render();
+  }
+
+  function confirmReset() {
+    if (confirm('Reset all points and log? This cannot be undone.')) {
+      state = { total: 0, cats: { math: 0, coding: 0, writing: 0, exercise: 0, chores: 0, penalty: 0 }, log: [] };
+      debounceSave();
+      render();
+    }
+  }
+
+  function now() {
+    const d = new Date();
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
+      d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+
+  function coinBreakdown(pts) {
+    const q = Math.floor(pts / 25); pts %= 25;
+    const d = Math.floor(pts / 10); pts %= 10;
+    const n = Math.floor(pts / 5);  pts %= 5;
+    const p = pts;
+    return { quarters: q, dimes: d, nickels: n, pennies: p };
+  }
+
+  function render() {
+    const t = state.total;
+
+    document.getElementById('total-pts').textContent = t;
+    document.getElementById('coin-equiv').textContent = `≈ ${t} penn${t===1?'y':'ies'} in the jar`;
+
+    const coins = coinBreakdown(t);
+    document.getElementById('pennies').textContent = coins.pennies;
+    document.getElementById('nickels').textContent = coins.nickels;
+    document.getElementById('dimes').textContent = coins.dimes;
+    document.getElementById('quarters').textContent = coins.quarters;
+
+    ['math','coding','writing','exercise','chores'].forEach(c => {
+      const v = state.cats[c] || 0;
+      const el = document.getElementById(c + '-pts');
+      const el2 = document.getElementById(c + '-pts-2');
+      if (el) el.textContent = v + ' pts';
+      if (el2) el2.textContent = v;
+    });
+    const pen = state.cats['penalty'] || 0;
+    const penEl = document.getElementById('penalty-pts');
+    const penEl2 = document.getElementById('penalty-pts-2');
+    if (penEl) penEl.textContent = '-' + pen + ' pts';
+    if (penEl2) penEl2.textContent = '-' + pen;
+
+    document.querySelectorAll('.prize-row').forEach(row => {
+      const thresh = parseInt(row.dataset.threshold);
+      const pct = Math.min(100, (t / thresh) * 100);
+      row.querySelector('.prize-progress-fill').style.width = pct + '%';
+      if (t >= thresh) row.classList.add('unlocked');
+      else row.classList.remove('unlocked');
+    });
+
+    const logEl = document.getElementById('log-entries');
+    if (state.log.length === 0) {
+      logEl.innerHTML = '<div class="empty-log">No activity yet. Start logging.</div>';
+    } else {
+      logEl.innerHTML = state.log.slice(0, 40).map(e => `
+        <div class="log-entry" style="flex-wrap:wrap;">
+          <span class="log-delta ${e.delta >= 0 ? 'pos' : 'neg'}">${e.delta >= 0 ? '+' : ''}${e.delta}</span>
+          <span class="log-desc">${e.desc}</span>
+          <span class="log-time">${e.time}</span>
+          ${e.comment ? `<span style="width:100%;padding-left:50px;font-size:0.68rem;color:var(--text-dim);font-style:italic;margin-top:2px;">${e.comment}</span>` : ''}
+        </div>
+      `).join('');
+    }
+  }
+
+  loadFromSupabase();
+</script>
+</body>
+</html>
