@@ -495,6 +495,33 @@
       </div>
     </div>
 
+    <!-- Jobs -->
+    <div class="card">
+      <div class="section-title">Category</div>
+      <div class="cat-header">
+        <span class="cat-icon">&lt;/&gt;</span>
+        <span class="cat-name">Jobs</span>
+        <span class="cat-pts" id="job-pts">0 pts</span>
+      </div>
+      <div>
+        <div class="habit-row">
+          <span class="habit-name">1 Easy apply job</span>
+          <span class="habit-pts-badge">+1 pt</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'jobs', 1, 'Easy apply job')">+ Log</button>
+        </div>
+        <div class="habit-row">
+          <span class="habit-name">MathJobs Job</span>
+          <span class="habit-pts-badge">+3 pts</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'jobs', 3, 'MathJobs Job')">+ Log</button>
+        </div>
+        <div class="habit-row">
+          <span class="habit-name">Serious Effort on Job App (non-postdoc/academic)</span>
+          <span class="habit-pts-badge">+3 pts</span>
+          <button class="btn-pts earn" onclick="openModal('earn', 'jobs', 3, 'Serious Effort on Job App (non-postdoc/academic)')">+ Log</button>
+        </div>
+      </div>
+    </div>
+
     <!-- WRITING -->
     <div class="card">
       <div class="section-title">Category</div>
@@ -566,11 +593,6 @@
           <button class="btn-pts earn" onclick="openModal('earn', 'chores', 1, 'Clean the sink')">+ Log</button>
         </div>
         <div class="habit-row">
-          <span class="habit-name">Clean the counters</span>
-          <span class="habit-pts-badge">+1 pt</span>
-          <button class="btn-pts earn" onclick="openModal('earn', 'chores', 1, 'Clean the counters')">+ Log</button>
-        </div>
-        <div class="habit-row">
           <span class="habit-name">Wipe down mirrors</span>
           <span class="habit-pts-badge">+1 pt</span>
           <button class="btn-pts earn" onclick="openModal('earn', 'chores', 1, 'Wipe mirrors')">+ Log</button>
@@ -584,11 +606,6 @@
           <span class="habit-name">Take out the trash</span>
           <span class="habit-pts-badge">+1 pt</span>
           <button class="btn-pts earn" onclick="openModal('earn', 'chores', 1, 'Took out trash')">+ Log</button>
-        </div>
-        <div class="habit-row">
-          <span class="habit-name">Wash the dishes</span>
-          <span class="habit-pts-badge">+1 pt</span>
-          <button class="btn-pts earn" onclick="openModal('earn', 'chores', 1, 'Washed dishes')">+ Log</button>
         </div>
         <div class="habit-row">
           <span class="habit-name">Declutter a drawer or shelf</span>
@@ -971,7 +988,7 @@
     document.getElementById('dimes').textContent = coins.dimes;
     document.getElementById('quarters').textContent = coins.quarters;
 
-    ['math','coding','writing','exercise','chores'].forEach(c => {
+    ['math','coding','writing','exercise','chores','jobs'].forEach(c => {
       const v = state.cats[c] || 0;
       const el = document.getElementById(c + '-pts');
       const el2 = document.getElementById(c + '-pts-2');
